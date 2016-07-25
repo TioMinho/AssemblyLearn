@@ -1,0 +1,75 @@
+;====================================================================
+; 2 Digit 7-Segment Counter for MCS-51
+;
+; Created:   sáb set 26 2015
+; Processor: 80C51
+; Compiler:  ASEM-51
+;====================================================================
+
+$NOMOD51
+$INCLUDE (8051.MCU)
+
+;====================================================================
+; Código
+;====================================================================
+; Variáveis
+Pulso		bit	P1.0	; Referente ao Push-Button
+Contador	equ	0Eh	; Referente a um endereço qualquer da RAM de uso geral
+
+; Código Propriamente Dito
+         org   0000h		; Ainda não sei para que isso serve
+      
+         MOV   Contador, #00	; Iniciamos o contador do 0
+         MOV   A, #00		; Movemos o mesmo valor para o Acumulador
+         CALL  Convert		; Chamamos o conversor (para transformar esse 0 em binário)
+         MOV   P0, A		; Passamos o 0 em binário para a porta P0, ligando o Display
+      
+Start:	 JB    Pulso, $		; Se não pressionar o pushbutton, pula para essa mesma linha
+	 JNB   Pulso, $		; Se estiver pressionado o pushbutton, pula para essa mesma linha
+	 ; Depois que segurar e soltar o push-button, o código começa...
+	 MOV   A, Contador	; Move-se o valor do contador para A, pois só o A pode realizar soma
+	 ADD   A, #01		; Soma-se uma unidade ao Acumulador
+	 DA    A		; Transforma-se o valor hexadecimal em BCD
+	 MOV   Contador, A	; Move-se o acumulador de volta para o contador (para a próxima contagem)
+
+Loop:	 ; Segundo Dígito (Unidades)
+	 MOV   A, Contador	; Só por garantia... :P
+	 ANL   A, #0Fh		; Faz-se um AND lógico com cada dígito do A, para que nunca ultrapasse 9
+	 CALL  Convert		; Chama-se a subrotina de conversão para binário
+	 MOV   P0, A		; Ativa-se a porta P0 com os valores da tabela referente ao número em A
+	 SETB  P2.1		; Ativa-se o segundo dígito no Display de 2 Dígitos
+	 CLR   P2.1		; Fecha-se o segundo dígito no Display (para não aparecer número repetidos)
+	 
+	 ; Primeiro Dígito (Dezenas)
+	 MOV   A, Contador	; Traz-se o valor do contador de volta para o A
+	 SWAP  A		; Troca o que é dezena por unidade e vice-versa
+	 ANL   A, #0Fh		; AND lógico para termos apenas o dígito das unidades (agora a dezena)
+	 CALL  Convert		; Transforma-se esse valor em binário...
+	 MOV   P0, A		; Move-se para a porta P0 esse valor
+	 SETB  P2.0		; Ativa-se o primeiro dígito no display de 2 Dígitos
+	 CLR   P2.0		; Fecha0se o primeiro dígito no Display (para não aparecer números repetidos)
+	 
+	 JB    Pulso, Loop	; Faz-se essa alternância unidade/dezena enquanto não apertarmos novamente o pushbutton
+	 SJMP  Start		; Volta-se para o início (Loop)
+	 
+; Sub-rotina de Conversão para Binário
+Convert: MOV   DPTR, #Table	; Inicia-se o DPTR com o primeiro índice da Tabela
+	 MOVC  A, @A+DPTR	; Avança-se na tabela exatamente o valor de A (0 - 9)
+	 CPL   A		; Troca-se tudo que é 1 (lógica positiva) por 0 (lógica negativa)
+	 RET			; Finaliza-se a subrotina
+	 
+; Tabela dos numerais para o Diplay de 7-Segmentos
+Table:   ;      gfedcba
+	 DB    00111111b ; 0
+	 DB    00000110b ; 1
+	 DB    01011011b ; 2
+	 DB    01001111b ; 3
+	 DB    01100110b ; 4
+	 DB    01101101b ; 5 
+	 DB    01111101b ; 6
+	 DB    00000111b ; 7
+	 DB    01111111b ; 8
+	 DB    01101111b ; 9
+       
+;====================================================================
+      END	; :)
